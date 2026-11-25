@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meilleurs vœux 2027 – la nuit d'hiver (réalité augmentée)</title>
+
+  <!-- 1. A-Frame : affiche la 3D dans la page web -->
+  <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+  <!-- 2. MindAR : reconnaît la carte dans l'image de la caméra -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <!-- 3. aframe-extras : son composant animation-mixer joue l'animation faite dans Blender -->
+  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.6.0/dist/aframe-extras.min.js"></script>
+  <!-- 4. Ordre d'affichage des lumières (voir ordre-lumieres.js) -->
+  <script src="ordre-lumieres.js"></script>
+
+  <style>
+    body { margin: 0; }
+  </style>
+</head>
+<body>
+  <!-- targets.mind = l'image de la carte "compilée" pour que MindAR la reconnaisse
+       (la même carte que la version pop-up, donc la même cible).
+       filterMinCF / filterBeta : lissage du suivi (moins de tremblements). -->
+  <a-scene
+    mindar-image="imageTargetSrc: assets/targets.mind; maxTrack: 1; filterMinCF: 0.0001; filterBeta: 0.01; warmupTolerance: 5; missTolerance: 10"
+    color-space="sRGB"
+    renderer="colorManagement: true; antialias: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <a-assets>
+      <!-- La nuit d'hiver, exportée de Blender en .glb (voile de nuit, lumières, cigogne, neige) -->
+      <a-asset-item id="carte-nuit" src="assets/carte.glb"></a-asset-item>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <!-- Tout ce qui est dans cette entité reste collé sur la carte (1 unité = largeur de la carte) -->
+    <a-entity id="carte" mindar-image-target="targetIndex: 0">
+      <!-- rotation 90° : la carte posée au sol dans Blender devient le plan de la carte filmée -->
+      <a-gltf-model id="nuit" src="#carte-nuit" rotation="90 0 0" animation-mixer ordre-lumieres></a-gltf-model>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    // Chaque fois que la carte est (re)trouvée, la nuit recommence depuis le début
+    document.querySelector('#carte').addEventListener('targetFound', () => {
+      const animation = document.querySelector('#nuit').components['animation-mixer'];
+      if (animation) {
+        animation.stopAction();
+        animation.playAction();
+      }
+    });
+  </script>
+</body>
+</html>

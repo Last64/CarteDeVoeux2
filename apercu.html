@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aperçu sans caméra – la nuit d'hiver 2027</title>
+  <!-- Même chose que index.html, mais sans réalité augmentée : pratique pour tester sur un ordinateur -->
+  <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.6.0/dist/aframe-extras.min.js"></script>
+  <script src="ordre-lumieres.js"></script>
+  <style>
+    body { margin: 0; }
+  </style>
+</head>
+<body>
+  <a-scene renderer="colorManagement: true; antialias: true" vr-mode-ui="enabled: false" background="color: #1d2130">
+    <a-assets>
+      <a-asset-item id="carte-nuit" src="assets/carte.glb"></a-asset-item>
+      <img id="carte-imprimee" src="impression/carte-a-imprimer.png">
+    </a-assets>
+
+    <!-- La carte vue de face, comme sur un écran. Elle pivote doucement pour montrer le relief. -->
+    <a-entity id="carte"
+              animation="property: rotation; from: 0 -12 0; to: 0 12 0; dir: alternate; loop: true; dur: 9000; easing: easeInOutSine">
+      <!-- l'image imprimée (dans index.html, c'est la vraie carte filmée qui la remplace) -->
+      <a-plane width="1" height="0.4886" material="src: #carte-imprimee; shader: flat"></a-plane>
+      <!-- exactement le même modèle que dans index.html -->
+      <a-gltf-model id="nuit" src="#carte-nuit" rotation="90 0 0" animation-mixer ordre-lumieres></a-gltf-model>
+    </a-entity>
+
+    <a-camera position="0 0.02 0.98" fov="50" look-controls="enabled: false" wasd-controls="enabled: false"></a-camera>
+  </a-scene>
+</body>
+</html>
