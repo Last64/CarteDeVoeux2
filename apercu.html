@@ -6,7 +6,7 @@
   <title>Aperçu sans caméra – la nuit d'hiver 2027</title>
   <!-- Même chose que index.html, mais sans réalité augmentée : pratique pour tester sur un ordinateur -->
   <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.6.0/dist/aframe-extras.min.js"></script>
+  <script src="nuit-boucle.js"></script>
   <script src="ordre-lumieres.js"></script>
   <style>
     body { margin: 0; }
@@ -25,7 +25,7 @@
       <!-- l'image imprimée (dans index.html, c'est la vraie carte filmée qui la remplace) -->
       <a-plane width="1" height="0.4886" material="src: #carte-imprimee; shader: flat"></a-plane>
       <!-- exactement le même modèle que dans index.html -->
-      <a-gltf-model id="nuit" src="#carte-nuit" rotation="90 0 0" animation-mixer ordre-lumieres></a-gltf-model>
+      <a-gltf-model id="nuit" src="#carte-nuit" rotation="90 0 0" nuit-boucle ordre-lumieres></a-gltf-model>
     </a-entity>
 
     <a-camera position="0 0.02 0.98" fov="50" look-controls="enabled: false" wasd-controls="enabled: false"></a-camera>

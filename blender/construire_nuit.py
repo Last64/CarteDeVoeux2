@@ -12,7 +12,9 @@ rien ne sort de la carte, c'est la LUMIÈRE qui raconte.
      fenêtres et guirlandes des maisons.
   3. Une fois la cigogne partie, « Meilleurs Voeux » s'allume en néon bleu.
      Deux étoiles filantes traversent le ciel.
-  4. Tout s'éteint, le jour revient (le voile remonte) et l'animation recommence.
+  4. Ensuite la ville RESTE allumée : la page web rejoue en boucle les images 228 → 348
+     (étoiles et guirlandes qui scintillent, néons qui respirent, neige, étoiles filantes).
+     Tous les mouvements qui continuent ont une période qui divise 120 images : la boucle ne se voit pas.
 
 Repères (les mêmes que la version pop-up, pour réutiliser la même cible MindAR) :
 - La carte fait 1 m de large dans Blender (1 unité = largeur de la carte dans MindAR).
@@ -20,7 +22,7 @@ Repères (les mêmes que la version pop-up, pour réutiliser la même cible Mind
 - Tout est « sans ombre » (unlit) : ce sont des lumières, elles ne doivent pas dépendre d'un éclairage.
 - Les éléments s'allument et s'éteignent avec l'ÉCHELLE (0 = éteint, 1 = allumé) :
   le glTF ne peut pas animer l'opacité d'un matériau, mais il sait animer l'échelle.
-- L'animation dure 14 s (336 images à 24 i/s) et boucle : l'image 336 est identique à l'image 0.
+- L'animation dure 14,5 s (348 images à 24 i/s). L'image 348 est identique à l'image 228 (BOUCLE).
 
 Pour reconstruire la scène : onglet Scripting > ouvrir ce fichier > Run Script.
 Export : exporter_glb() en bas du script, ou Fichier > Exporter > glTF 2.0 (réglages dans le README).
@@ -39,7 +41,8 @@ CARTE_PNG = os.path.join(BLEND_DIR, "..", "impression", "carte-a-imprimer.png")
 W_PX, H_PX = 2540, 1241          # taille du dessin en pixels
 K = 1.0 / W_PX                   # 1 pixel = 1/2540 m  ->  la carte fait 1 m de large
 H_CARTE = H_PX * K               # 0,4886 m
-FPS, FIN = 24, 336               # 14 secondes
+FPS, FIN = 24, 348               # 14,5 secondes
+BOUCLE = 228                     # après l'image 228, la ville reste allumée : la page web rejoue 228 → 348 en boucle
 INFO = json.load(open(os.path.join(CALQUES, "calques.json"), encoding="utf-8"))
 EL = json.load(open(os.path.join(ELEM, "elements.json"), encoding="utf-8"))
 R = math.radians
@@ -49,8 +52,6 @@ random.seed(2027)                # toujours le même « hasard » : la scène es
 NUIT_DEBUT, NUIT_FIN = 0, 40         # le voile descend
 VOL_DEBUT, VOL_FIN = 44, 196         # la cigogne traverse la carte
 TEXTE_ON = 204                       # « Meilleurs Voeux » s'allume
-EXTINCTION = 290                     # les lumières s'éteignent (de 290 à ~306)
-JOUR_DEBUT, JOUR_FIN = 300, 330      # le voile remonte
 
 
 def px(x, y):
@@ -192,27 +193,25 @@ def sinus(ob, chemin, index, amplitude, periode, decalage, debut, fin, fondu=12)
     m.phase_offset = -2 * math.pi * decalage / periode
     m.use_restricted_range = True
     m.frame_start, m.frame_end = debut, fin
-    m.blend_in = m.blend_out = fondu
+    m.blend_in = fondu
+    m.blend_out = 0 if fin >= FIN else fondu    # jusqu'à la fin : pas de fondu, pour que la boucle ne se voie pas
     return m
 
 
 ETEINT = 0.001   # échelle « éteinte » (0 pile pose problème à certains lecteurs glTF)
 
-def allumer(ob, f_on, f_off, taille=1.0, gresille=False, duree_off=6):
-    """L'élément est éteint (échelle ~0), s'allume à f_on et s'éteint à f_off.
+def allumer(ob, f_on, taille=1.0, gresille=False):
+    """L'élément est éteint (échelle ~0), s'allume à f_on et RESTE allumé jusqu'à la fin.
     gresille=True : il clignote 2 fois avant de rester allumé, comme un vrai néon."""
     cle_taille(ob, 0, ETEINT, 'CONSTANT')
     if gresille:
         # paliers constants : allumé / éteint / allumé / éteint / allumé
         for f, s in ((f_on, taille), (f_on + 2, ETEINT), (f_on + 5, taille), (f_on + 7, ETEINT), (f_on + 12, taille)):
             cle_taille(ob, f, s, 'CONSTANT')
-        cle_taille(ob, f_off, taille, 'SINE', 'EASE_IN')
     else:
         cle_taille(ob, f_on, ETEINT, 'BACK', 'EASE_OUT', back=2.2)
         cle_taille(ob, f_on + 6, taille)
-        cle_taille(ob, f_off, taille, 'SINE', 'EASE_IN')
-    cle_taille(ob, f_off + duree_off, ETEINT, 'CONSTANT')
-    cle_taille(ob, FIN, ETEINT, 'CONSTANT')
+    cle_taille(ob, FIN, taille)
 
 
 # ================================================================== 5. LA NUIT TOMBE
@@ -223,24 +222,20 @@ def construire_voile(coll):
     ob.scale = (1, ETEINT, 1)
     cle(ob, 'scale', 1, NUIT_DEBUT, ETEINT, 'SINE', 'EASE_OUT')
     cle(ob, 'scale', 1, NUIT_FIN, 1.0)
-    cle(ob, 'scale', 1, JOUR_DEBUT, 1.0, 'SINE', 'EASE_IN')
-    cle(ob, 'scale', 1, JOUR_FIN, ETEINT, 'CONSTANT')
-    cle(ob, 'scale', 1, FIN, ETEINT, 'CONSTANT')
+    cle(ob, 'scale', 1, FIN, 1.0)                               # la nuit reste
     return ob
 
 
 def construire_lune(coll):
     ob = plan("Lune", "lune", (300, 40, 560, 300), coll, z=0.003)
     x, y = ob.location.x, ob.location.y
-    allumer(ob, 18, 298, duree_off=18)
-    cle(ob, 'location', 1, 0, y - 0.05, 'SINE', 'EASE_OUT')       # elle se lève…
+    allumer(ob, 18)
+    cle(ob, 'location', 1, 0, y - 0.05, 'SINE', 'EASE_OUT')       # elle se lève
     cle(ob, 'location', 1, 18, y - 0.05, 'SINE', 'EASE_OUT')
     cle(ob, 'location', 1, 64, y)
-    cle(ob, 'location', 1, 298, y, 'SINE', 'EASE_IN')
-    cle(ob, 'location', 1, 318, y - 0.03, 'CONSTANT')                # …et se couche
-    cle(ob, 'location', 1, FIN, y - 0.05, 'CONSTANT')
+    cle(ob, 'location', 1, FIN, y)
     cle(ob, 'rotation_euler', 2, 0, 0.0)
-    sinus(ob, 'rotation_euler', 2, R(4), 120, 0, 64, 298, 20)       # elle se balance doucement
+    sinus(ob, 'rotation_euler', 2, R(4), 120, 0, 64, FIN, 20)       # elle se balance doucement
     return ob
 
 
@@ -260,22 +255,22 @@ def construire_etoiles(coll, n=26):
     for i, (x, y, t) in enumerate(etoiles):
         ob = plan(f"Etoile_{i:02d}", "etoile", (x - t / 2, y - t / 2, x + t / 2, y + t / 2), coll, z=0.003)
         f_on = random.randint(26, 80)
-        allumer(ob, f_on, random.randint(EXTINCTION, EXTINCTION + 10))
-        periode = random.choice((30, 36, 44, 52))
+        allumer(ob, f_on)
+        periode = random.choice((24, 30, 40, 60))                    # toutes divisent 120 : la boucle ne se voit pas
         for ax in (0, 1):                                            # elle scintille
-            sinus(ob, 'scale', ax, 0.45, periode, random.uniform(0, periode), f_on + 8, EXTINCTION, 8)
+            sinus(ob, 'scale', ax, 0.45, periode, random.uniform(0, periode), f_on + 8, FIN, 8)
         ob.rotation_euler.z = R(random.uniform(-15, 15))
 
 
 def construire_neige(coll, n=64):
     """Flocons blancs (on les voit sur la nuit) : chacun descend en boucle (modificateur Cycles)."""
     for i in range(n):
-        t = random.uniform(10, 22)
+        t = random.uniform(15, 28)
         x = random.uniform(-0.52, 0.52)
         z = random.uniform(0.015, 0.14)
         ob = plan(f"Flocon_{i:02d}", "flocon", (0, 0, t, t), coll, z=z)
         ob.location.x = x
-        periode = random.choice((96, 120, 144, 168))                  # 4 à 7 s pour traverser la carte
+        periode = random.choice((60, 120, 120))                      # 2,5 ou 5 s pour traverser la carte (divise 120)
         depart = random.uniform(0, periode)
         haut, bas = H_CARTE / 2 + 0.04, -H_CARTE / 2 - 0.04
         # une chute = 2 images clés linéaires, répétées par le modificateur Cycles
@@ -283,13 +278,11 @@ def construire_neige(coll, n=64):
         fc = cle(ob, 'location', 1, -depart + periode, bas, 'LINEAR')
         fc.modifiers.new('CYCLES')
         cle(ob, 'location', 0, 0, x)
-        sinus(ob, 'location', 0, random.uniform(0.006, 0.016), random.choice((48, 60, 72)), random.uniform(0, 60), 0, FIN, 0)
+        sinus(ob, 'location', 0, random.uniform(0.006, 0.016), random.choice((40, 60, 120)), random.uniform(0, 60), 0, FIN, 0)
         cle_taille(ob, 0, ETEINT, 'CONSTANT')                          # la neige ne tombe que la nuit
         cle_taille(ob, 30 + i % 20, ETEINT)
         cle_taille(ob, 42 + i % 20, 1.0)
-        cle_taille(ob, 300 + i % 16, 1.0)
-        cle_taille(ob, 312 + i % 16, ETEINT, 'CONSTANT')
-        cle_taille(ob, FIN, ETEINT, 'CONSTANT')
+        cle_taille(ob, FIN, 1.0)
 
 
 # ================================================================== 6. LA CIGOGNE ET SA LANTERNE
@@ -362,30 +355,54 @@ def construire_cigogne(coll):
 
 
 # ================================================================== 7. LA VILLE S'ALLUME
-def extinction(x_px):
-    """Les lumières s'éteignent de gauche à droite, en ~16 images."""
-    return EXTINCTION + int(16 * x_px / W_PX)
-
-
 def construire_neons(coll):
     for nom in ('chiffre_7', 'chiffre_2b', 'chiffre_0', 'chiffre_2a'):
         b = EL['neon_' + nom]
         ob = plan("Neon_" + nom, "neon_" + nom, b, coll, z=0.005)
         f_on = passage((b[0] + b[2]) / 2)
-        allumer(ob, f_on, extinction((b[0] + b[2]) / 2), gresille=True)
+        allumer(ob, f_on, gresille=True)
         for ax in (0, 1):                                              # le néon « respire »
-            sinus(ob, 'scale', ax, 0.015, 48, 0, f_on + 14, EXTINCTION, 10)
+            sinus(ob, 'scale', ax, 0.015, 40, 0, f_on + 14, FIN, 10)
     b = EL['neon_texte']
     ob = plan("Neon_texte", "neon_texte", b, coll, z=0.005)
-    allumer(ob, TEXTE_ON, extinction((b[0] + b[2]) / 2), gresille=True)
+    allumer(ob, TEXTE_ON, gresille=True)
+
+
+def interrupteur(ob, etats):
+    """Une lampe qu'on allume ou éteint d'un coup : paliers constants. etats = [(image, allumée ?), ...]"""
+    cle_taille(ob, 0, ETEINT, 'CONSTANT')
+    for f, allumee in etats:
+        cle_taille(ob, f, 1.0 if allumee else ETEINT, 'CONSTANT')
+    cle_taille(ob, FIN, 1.0 if etats[-1][1] else ETEINT, 'CONSTANT')
 
 
 def construire_fenetres(coll):
-    for i, (x0, y0, x1, y1) in enumerate(EL['fenetres']):
-        cx, cy, w, h = (x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0
-        # la texture « fenetre » a la vitre sur la moitié centrale : le plan est 2 fois plus grand
-        ob = plan(f"Fenetre_{i:02d}", "fenetre", (cx - w, cy - h, cx + w, cy + h), coll, z=0.004)
-        allumer(ob, passage(cx, delai=random.randint(4, 18)), extinction(cx))
+    """Chaque fenêtre a sa propre image, qui suit sa forme dans le dessin (voir preparer_elements.py).
+    Pour faire vrai, toutes les fenêtres ne se comportent pas pareil :
+    - la plupart s'allument d'un coup quand la cigogne passe (on appuie sur l'interrupteur) ;
+    - certaines grésillent avant de s'allumer (vieux néon de cuisine) ;
+    - quelques-unes restent noires (personne à la maison) ;
+    - d'autres vivent pendant la boucle : quelqu'un éteint puis rallume, ou rentre tard et allume.
+      Leurs changements tombent entre les images 228 et 348, et l'état est le même à 228 et à 348."""
+    roles = ['normale'] * 18 + ['gresille'] * 4 + ['noire'] * 5 + ['va-et-vient'] * 4 + ['rentre-tard'] * 4
+    random.shuffle(roles)
+    for i, f in enumerate(EL['fenetres']):
+        role = roles[i % len(roles)]
+        if role == 'noire':
+            continue
+        x0, y0, x1, y1 = f['box']
+        ob = plan(f"Fenetre_{i:02d}", f['img'], f['box'], coll, z=0.004)
+        on = passage((x0 + x1) / 2, delai=random.randint(2, 22))
+        if role == 'normale':
+            interrupteur(ob, [(on, True)])
+        elif role == 'gresille':
+            interrupteur(ob, [(on, True), (on + 2, False), (on + 4, True), (on + 5, False), (on + 9, True)])
+        elif role == 'va-et-vient':
+            off = random.randint(240, 290)
+            interrupteur(ob, [(on, True), (off, False), (off + random.randint(16, 40), True)])
+        else:  # rentre-tard : noire au début, s'allume pendant la boucle puis s'éteint avant la fin
+            tard = random.randint(236, 280)
+            interrupteur(ob, [(tard, True), (min(tard + random.randint(30, 60), 340), False)])
 
 
 def construire_guirlandes(coll):
@@ -396,17 +413,17 @@ def construire_guirlandes(coll):
         g = groupes.setdefault(a['g'], collection("Guirlande " + a['g'], coll))
         ob = plan(f"Ampoule_{a['g']}_{i:03d}", "ampoule_" + a['c'], (x - t / 2, y - t / 2, x + t / 2, y + t / 2), g, z=0.007)
         f_on = passage(x, delai=4 + i % 3)
-        allumer(ob, f_on, extinction(x))
+        allumer(ob, f_on)
         if a['g'] == 'sapins' or i % 3 == 0:                          # certaines ampoules clignotent
-            periode = random.choice((16, 20, 24, 32))
+            periode = random.choice((20, 24, 30, 40))
             for ax in (0, 1):
-                sinus(ob, 'scale', ax, 0.35, periode, random.uniform(0, periode), f_on + 8, EXTINCTION, 6)
+                sinus(ob, 'scale', ax, 0.35, periode, random.uniform(0, periode), f_on + 8, FIN, 6)
 
 
 def construire_filantes(coll):
     """Deux étoiles filantes : une traînée qui traverse le haut du ciel (tête à droite de l'image)."""
-    for nom, f0, f1, a, b in (("Filante_1", 228, 246, (-0.30, 0.236), (0.06, 0.214)),
-                              ("Filante_2", 262, 278, (0.28, 0.238), (0.47, 0.150))):
+    for nom, f0, f1, a, b in (("Filante_1", 240, 258, (-0.30, 0.236), (0.06, 0.214)),
+                              ("Filante_2", 290, 306, (0.28, 0.238), (0.47, 0.150))):
         ob = plan(nom, "filante", (0, 0, 300, 30), coll, z=0.006, pivot_px=(300, 15))
         ob.rotation_euler.z = math.atan2(b[1] - a[1], b[0] - a[0])
         cle_taille(ob, 0, ETEINT, 'CONSTANT')

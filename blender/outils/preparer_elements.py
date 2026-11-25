@@ -68,17 +68,6 @@ AMPOULES = {'chaud':('#ffe3a0','#ffb02e'), 'rouge':('#ffb0a8','#ff3b2f'), 'vert'
 for k,(c,h) in AMPOULES.items(): radial('ampoule_'+k, 64, c, h, 6, 22, core_white=0.8)
 radial('flocon', 32, '#ffffff', '#dfefff', 4, 9)
 
-# ---------- fenêtre allumée (rectangle intérieur = 50 % centraux)
-S=96; yy,xx=np.mgrid[0:S,0:S]
-dx = np.maximum(np.abs(xx-(S-1)/2)-S/4, 0); dy=np.maximum(np.abs(yy-(S-1)/2)-S/4, 0)
-d = np.hypot(dx,dy)
-core = np.clip(1-d/1.2,0,1)
-glow = np.exp(-(d/14)**2*2)*0.75
-a = np.maximum(core,glow)
-cy = np.clip(1-np.hypot(xx-S/2,yy-S/2)/(S/3),0,1)[...,None]
-rgb = hexc('#ffb84a')*(1-cy) + hexc('#fff0b8')*cy
-save_rgba('fenetre', rgb, a)
-
 # ---------- étoile scintillante (4 branches)
 S=64; yy,xx=np.mgrid[0:S,0:S]; c=(S-1)/2; X=np.abs(xx-c); Y=np.abs(yy-c)
 branche = np.maximum(np.exp(-X/1.6)*np.clip(1-Y/30,0,1), np.exp(-Y/1.6)*np.clip(1-X/30,0,1))
@@ -130,10 +119,52 @@ rgb=rgb*(1-t[...,None]*0.25)+np.array([28,40,86])*t[...,None]*0.25
 save_rgba('voile_nuit', rgb, a)
 
 # ---------- positions : fenêtres, guirlandes, sapins
+# ---------- fenêtres allumées : une image par fenêtre, qui suit sa vraie forme dans le dessin
+# La lumière remplit seulement l'intérieur blanc de la fenêtre : les traits du dessin (cadre, croisillons,
+# colombages) restent sombres par-dessus, comme de vrais montants devant une pièce éclairée.
+# Dans la pièce, la lampe est en bas : c'est plus clair en bas au centre et plus orangé vers le haut et les bords.
+# Un halo très léger déborde sur la façade. Chaque fenêtre a sa propre teinte (ampoule, bougie, lampe chaude).
 fen = json.load(open(sys.argv[3]))
-win=[f['box'] for f in fen]
-win += [[2290,354,2313,392],[2127,425,2147,452]]   # fenêtres du château (dessinées à la main)
-out['fenetres']=win
+# on écarte les bandes très allongées : ce sont des espaces entre deux poutres, pas des fenêtres
+win=[f['box'] for f in fen if (f['box'][2]-f['box'][0]) / (f['box'][3]-f['box'][1]) < 2.2]
+win += [[2290,354,2313,392]]   # la fenêtre de la tour du château (ajoutée à la main)
+carte = np.array(Image.open(os.path.join(SRC,'impression','carte-a-imprimer.png')).convert('RGBA')).astype(np.float32)
+fond = carte[:,:,:3]*(carte[:,:,3:]/255) + 255*(1-carte[:,:,3:]/255)
+gris = fond.mean(2)
+TEINTES = [('#fff3cf','#ffb347'), ('#ffe7a6','#ff9a2e'), ('#fff6dc','#ffc266'), ('#ffdf9e','#f08a24'), ('#fff0c0','#ffa940')]
+os.makedirs(os.path.join(DST,'fenetres'), exist_ok=True)
+liste=[]
+for i,(x0,y0,x1,y1) in enumerate(win):
+    P=12
+    X0,Y0,X1,Y1 = x0-P, y0-P, x1+P, y1+P
+    g = gris[Y0:Y1, X0:X1]
+    libre = (g > 150).astype(np.uint8)
+    n, lab = cv2.connectedComponents(libre, connectivity=4)
+    cx, cy = (x1-x0)//2+P, (y1-y0)//2+P
+    # la zone blanche qui contient le centre de la fenêtre
+    k = lab[cy, cx]
+    masque = (lab == k).astype(np.float32) if k else np.zeros_like(g)
+    if k == 0 or masque[:P//2].any() or masque[-P//2:].any() or masque[:, :P//2].any() or masque[:, -P//2:].any():
+        masque = np.zeros_like(g); masque[P:-P, P:-P] = 1     # fenêtre ouverte dans le dessin : rectangle
+        masque *= libre
+    masque = cv2.GaussianBlur(masque, (0,0), 0.7)
+    h, w = g.shape
+    yy, xx = np.mgrid[0:h, 0:w]
+    # lampe en bas au centre de la fenêtre
+    lx, ly = w/2, P + (y1-y0)*0.78
+    r = np.hypot((xx-lx)/max(x1-x0,1), (yy-ly)/max(y1-y0,1))
+    t = np.clip(r/0.95, 0, 1)[..., None]
+    clair, chaud = TEINTES[i % len(TEINTES)]
+    rgb = hexc(clair)*(1-t) + hexc(chaud)*t
+    intensite = 0.80 + 0.2*np.clip(1-r, 0, 1)
+    halo = cv2.GaussianBlur(masque, (0,0), 5) * 0.30
+    a = np.maximum(masque*intensite, halo)
+    poids = (masque*intensite / np.maximum(a, 1e-6))[..., None]
+    rgb = rgb*poids + hexc('#ff9f38')*(1-poids)
+    nom = f'fenetre_{i:02d}'
+    save_rgba(os.path.join('fenetres', nom), rgb, a)
+    liste.append({'box': [X0, Y0, X1, Y1], 'img': 'fenetres/'+nom})
+out['fenetres'] = liste
 
 def contour_haut(nom, x_pas=4, decal=6):
     im=np.array(Image.open(os.path.join(CAL,nom+'.png')).convert('RGBA'))[:,:,3]>128

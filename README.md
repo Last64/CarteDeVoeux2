@@ -13,15 +13,18 @@ Quand on vise la carte avec un téléphone :
    les guirlandes du pont, et enfin les fenêtres et les toits des maisons.
 3. **« Meilleurs Voeux » s'allume** en néon bleu quand la cigogne est partie.
    Deux étoiles filantes traversent le ciel.
-4. **Le jour revient.** Les lumières s'éteignent de gauche à droite, le voile remonte et tout recommence.
+4. **La ville reste allumée.** Ensuite, rien ne s'éteint : les guirlandes et les étoiles scintillent,
+   les néons respirent, la neige tombe et les étoiles filantes repassent, en boucle.
+   Si on perd la carte, l'animation se met en pause ; quand on la retrouve, elle reprend où elle en était
+   (on ne revoit pas la tombée de la nuit à chaque fois).
 
-L'animation dure 14 secondes et tourne en boucle. Tout se passe dans le navigateur, sans application.
+L'introduction dure 9,5 secondes, puis la boucle de 5 secondes se répète. Tout se passe dans le navigateur, sans application.
 
 **Site :** https://last64.github.io/CarteDeVoeux2/ (ouvrir sur le téléphone, autoriser la caméra, viser la carte)
 
 ![Aperçu de la nuit d'hiver](apercu/apercu-nuit.png)
 
-La vidéo `apercu/apercu-animation-nuit.mp4` montre l'animation complète.
+La vidéo `apercu/apercu-animation-nuit.mp4` montre l'introduction puis la ville qui reste allumée.
 
 ---
 
@@ -33,7 +36,8 @@ La vidéo `apercu/apercu-animation-nuit.mp4` montre l'animation complète.
 | Ambiance | Jour, couleurs du coloriage | Nuit, néons, guirlandes, fenêtres allumées |
 | Cigogne | S'envole puis revient se poser | Traverse la carte et allume la ville sur son passage |
 | Neige | Flocons à 6 branches, bleu clair (pour se voir sur le papier blanc) | Flocons ronds blancs (ils se voient sur la nuit) |
-| Technique principale | Position et rotation (profondeur, bascule, sinus) | Échelle 0 → 1 pour allumer et éteindre, paliers constants pour le grésillement |
+| Technique principale | Position et rotation (profondeur, bascule, sinus) | Échelle 0 → 1 pour allumer, paliers constants pour le grésillement |
+| Fin de l'animation | Tout rentre dans la carte et ça recommence | La ville reste allumée (boucle des images 228 → 348) |
 | Cible MindAR | `targets.mind` | Le même fichier : c'est la même carte |
 
 ---
@@ -52,13 +56,19 @@ et des calques de la version pop-up :
 - **Néons du 2027** (`neon_chiffre_*.png`) : le contour de chaque chiffre, avec un cœur blanc chaud et un halo doré flou.
 - **Néon du texte** (`neon_texte.png`) : les lettres fines du dessin imprimé, avec un halo bleu.
 - **Ampoules** (`ampoule_*.png`) : un point blanc entouré d'un halo de couleur (chaud, rouge, vert, bleu, or).
-- **Fenêtre allumée** (`fenetre.png`), **lune**, **étoile**, **étoile filante**, **flocon**, **lanterne**.
+- **Fenêtres allumées** (`fenetres/fenetre_*.png`) : **une image par fenêtre**, découpée dans le dessin.
+  La lumière remplit seulement l'intérieur blanc de la fenêtre : le cadre, les croisillons et les colombages
+  restent sombres par-dessus, comme de vrais montants devant une pièce éclairée.
+  La lampe est en bas de la pièce (plus clair en bas au centre, plus orangé vers les bords), un halo très léger
+  déborde sur la façade, et chaque fenêtre a sa propre teinte (ampoule, lampe chaude, bougie).
+- **Lune**, **étoile**, **étoile filante**, **flocon**, **lanterne**.
 - **Voile de nuit** (`voile_nuit.png`) : un bleu nuit transparent, plus foncé en haut, comme un vrai ciel.
 
 Le script calcule aussi les positions, rangées dans `elements.json` :
 
 - **Les fenêtres** sont trouvées automatiquement (`detecter_fenetres.py`) : dans le dessin, ce sont les petites zones blanches fermées
-  et presque rectangulaires des maisons. Les deux fenêtres du château ont été ajoutées à la main.
+  et presque rectangulaires des maisons. Les bandes très allongées (l'espace entre deux poutres) sont écartées,
+  et les deux fenêtres du château ont été ajoutées à la main.
 - **Les guirlandes** suivent le haut des toits (le bord supérieur du calque des maisons et du château), avec une ampoule tous les 34 à 40 pixels.
   Sur le pont, elles pendent entre des piquets plantés sur le parapet (une demi-sinusoïde entre deux piquets).
 - **Les sapins** reçoivent des ampoules de couleur posées au hasard dans leur silhouette, jamais trop près l'une de l'autre.
@@ -77,12 +87,24 @@ La collection *Carte imprimée* sert seulement de repère : elle est cachée au 
 |---|---|
 | 1 - La nuit tombe | Le voile, la lune, 26 étoiles |
 | 2 - La cigogne et sa lanterne | Le vide *Cigogne*, ses 3 morceaux (corps, 2 ailes) et la lanterne |
-| 3 - La ville s'allume | 5 néons, 37 fenêtres, 121 ampoules rangées par guirlande (maisons, château, pont, sapins) |
+| 3 - La ville s'allume | 5 néons, 30 fenêtres, 121 ampoules rangées par guirlande (maisons, château, pont, sapins) |
 | 4 - Le ciel | 2 étoiles filantes |
 | 5 - La neige | 64 flocons |
 
-**Allumer et éteindre avec l'échelle.** Le glTF ne sait pas animer la transparence d'un matériau, mais il sait animer l'échelle.
+**Allumer avec l'échelle.** Le glTF ne sait pas animer la transparence d'un matériau, mais il sait animer l'échelle.
 Une lumière éteinte est donc à l'échelle 0,001 (invisible), et elle passe à 1 pour s'allumer, avec une interpolation **Back** (petit rebond).
+Ensuite elle reste allumée jusqu'à la fin.
+
+**Une animation qui reste.** La timeline va de 0 à 348. Après l'image 228 (variable `BOUCLE`), tout est allumé :
+la page web rejoue alors les images 228 → 348 en boucle. Pour que le raccord ne se voie pas, l'image 348 doit être
+identique à l'image 228 : tous les mouvements qui continuent (sinus des étoiles, des ampoules et des néons, chute de la neige)
+ont une période qui divise 120 images (20, 24, 30, 40, 60 ou 120), et leurs sinus n'ont pas de fondu de sortie.
+
+**Des fenêtres qui vivent.** Une vraie lampe s'allume d'un coup : les fenêtres passent de 0 à 1 en interpolation
+**Constant** (un interrupteur), sans rebond. Et toutes ne font pas pareil (fonction `construire_fenetres`) :
+la plupart s'allument quand la cigogne passe, quelques-unes grésillent (vieux néon de cuisine),
+5 restent noires (personne à la maison), et pendant la boucle quelqu'un éteint puis rallume,
+ou rentre tard et allume sa fenêtre un moment.
 
 **Le grésillement des néons** : des images clés en interpolation **Constant** (allumé, éteint, allumé, éteint, allumé),
 comme un tube qui a du mal à démarrer. Ensuite, un sinus sur l'échelle (± 1,5 %) fait « respirer » le néon.
@@ -116,10 +138,8 @@ et à transparence douce (`alphaMode BLEND`) : ce sont des lumières, leur halo 
 | ~85 → 145 | Guirlandes du pont |
 | ~140 → 200 | Fenêtres et guirlandes des maisons |
 | 204 | « Meilleurs Voeux » s'allume |
-| 228 → 278 | Deux étoiles filantes |
-| 290 → 306 | Les lumières s'éteignent de gauche à droite |
-| 300 → 330 | Le voile remonte : le jour revient |
-| 336 | Comme l'image 0 : la boucle ne se voit pas |
+| 228 → 348 | **La boucle** : tout reste allumé, scintille et respire ; deux étoiles filantes (240 et 290) |
+| 348 | Identique à l'image 228 : la page repart à 228, le raccord ne se voit pas |
 
 **L'export** : *Fichier > Exporter > glTF 2.0* (ou la fonction `exporter_glb()` du script)
 
@@ -131,8 +151,14 @@ et à transparence douce (`alphaMode BLEND`) : ce sont des lumières, leur halo 
 
 ### 3. La page web : `index.html`
 
-Les mêmes bibliothèques que la version pop-up : **A-Frame 1.7.0**, **MindAR 1.2.5** et **aframe-extras 7.6.0** (`animation-mixer`).
+Les mêmes bibliothèques que la version pop-up : **A-Frame 1.7.0** et **MindAR 1.2.5**.
 La cible `assets/targets.mind` est la même, puisque c'est la même carte.
+
+L'animation n'est pas jouée par `animation-mixer` (aframe-extras), qui ne sait que tout rejouer depuis le début,
+mais par notre composant **`nuit-boucle.js`** :
+
+- il joue l'animation depuis le début une seule fois, puis repart à l'image 228 au lieu de 0 : la ville reste allumée ;
+- il met l'animation en pause quand MindAR perd la carte (`targetLost`) et la reprend quand il la retrouve (`targetFound`).
 
 En plus, `ordre-lumieres.js` fixe l'**ordre d'affichage** des images transparentes : d'abord le voile,
 puis le ciel, les fenêtres, les néons, les ampoules, et enfin la cigogne et la neige.
@@ -158,7 +184,8 @@ La caméra ne fonctionne qu'en **https**, d'où GitHub Pages :
 ## Modifier
 
 - **Le déroulé ou la trajectoire de la cigogne** : changer les valeurs en haut de `construire_nuit.py`
-  (`VOL`, `TEXTE_ON`, `EXTINCTION`…), lancer le script, puis réexporter.
+  (`VOL`, `TEXTE_ON`, `BOUCLE`…), lancer le script, puis réexporter.
+  Si `BOUCLE` change, changer aussi la valeur `boucle` dans `nuit-boucle.js` (en secondes : image / 24).
 - **Les couleurs ou les lumières** : modifier `preparer_elements.py`, le relancer, puis relancer `construire_nuit.py`.
 
 ## Questions possibles à l'oral
@@ -171,5 +198,8 @@ La caméra ne fonctionne qu'en **https**, d'où GitHub Pages :
   Un plan bleu nuit transparent posé dessus l'assombrit, et le dessin reste visible à travers.
 - **Pourquoi des flocons blancs ici et bleus dans l'autre version ?** Sur la nuit, le blanc se voit très bien.
   Sur le papier blanc de la version de jour, il fallait du bleu.
+- **Comment l'animation reste-t-elle allumée ?** Un glTF contient une seule animation, qui se joue du début à la fin.
+  Notre composant `nuit-boucle.js` la joue une fois, puis ne rejoue que la fin (images 228 → 348), où tout est allumé.
+  Comme toutes les périodes divisent 120 images, l'image 348 est identique à l'image 228.
 - **Pourquoi un modificateur Cycles pour la neige ?** Une chute = 2 images clés. Le modificateur la répète à l'infini :
   pas besoin de poser des dizaines d'images clés par flocon.

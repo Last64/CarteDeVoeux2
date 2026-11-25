@@ -1,5 +1,7 @@
 # Repère les fenêtres du dessin : les petites zones blanches fermées et presque rectangulaires
 # dans les maisons. Usage : python detecter_fenetres.py carte-a-imprimer.png fenetres.json
+# ATTENTION : la détection trouve aussi les panneaux de mur entre les poutres. La liste fenetres.json
+# a été triée à la main : on n a gardé que les vraies fenêtres (celles qui ont un cadre ou des croisillons).
 import cv2, numpy as np, json, sys
 src = sys.argv[1]; out = sys.argv[2]
 img = cv2.imread(src, cv2.IMREAD_UNCHANGED)

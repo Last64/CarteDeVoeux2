@@ -9,9 +9,8 @@
   <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
   <!-- 2. MindAR : reconnaît la carte dans l'image de la caméra -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-  <!-- 3. aframe-extras : son composant animation-mixer joue l'animation faite dans Blender -->
-  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.6.0/dist/aframe-extras.min.js"></script>
-  <!-- 4. Ordre d'affichage des lumières (voir ordre-lumieres.js) -->
+  <!-- 3. Nos deux composants : l'animation qui reste allumée, et l'ordre d'affichage des lumières -->
+  <script src="nuit-boucle.js"></script>
   <script src="ordre-lumieres.js"></script>
 
   <style>
@@ -39,19 +38,8 @@
     <!-- Tout ce qui est dans cette entité reste collé sur la carte (1 unité = largeur de la carte) -->
     <a-entity id="carte" mindar-image-target="targetIndex: 0">
       <!-- rotation 90° : la carte posée au sol dans Blender devient le plan de la carte filmée -->
-      <a-gltf-model id="nuit" src="#carte-nuit" rotation="90 0 0" animation-mixer ordre-lumieres></a-gltf-model>
+      <a-gltf-model id="nuit" src="#carte-nuit" rotation="90 0 0" nuit-boucle ordre-lumieres></a-gltf-model>
     </a-entity>
   </a-scene>
-
-  <script>
-    // Chaque fois que la carte est (re)trouvée, la nuit recommence depuis le début
-    document.querySelector('#carte').addEventListener('targetFound', () => {
-      const animation = document.querySelector('#nuit').components['animation-mixer'];
-      if (animation) {
-        animation.stopAction();
-        animation.playAction();
-      }
-    });
-  </script>
 </body>
 </html>
